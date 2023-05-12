@@ -104,7 +104,7 @@ func assertNotExists(t *testing.T, record libdns.Record) {
 	}
 }
 
-// isRecordExisting tests that a record with given name, type and value exists or not exists (based on shouldExist parameter)
+// isRecordExisting returns if a record with given name, type and value exists
 func isRecordExisting(t *testing.T, record libdns.Record) bool {
 	existingRecs := getRecords(t, zone)
 	for _, existingRec := range existingRecs {
