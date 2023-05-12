@@ -208,6 +208,21 @@ func Test_SetRecords_UpdatesRecordById(t *testing.T) {
 	assertExists(t, updatedRec)
 }
 
+func Test_SetRecords_WorksWithoutTtl(t *testing.T) {
+	defer cleanup()
+
+	rec := aTestRecord(zone, "127.0.0.1")
+	rec.Type = "TXT"
+	rec.TTL = 0
+
+	result := setRecord(t, rec)
+
+	if len(result) != 1 {
+		t.Fatalf("Expected 1 record updated, got %d", len(result))
+	}
+	assertExists(t, rec)
+}
+
 func Test_SetRecords_OverwritesExistingRecordWithSameNameAndType(t *testing.T) {
 	defer cleanup()
 

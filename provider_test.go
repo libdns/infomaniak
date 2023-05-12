@@ -37,6 +37,16 @@ func assertEquals(t *testing.T, name string, expected string, actual string) {
 	}
 }
 
+// assertEqualsInt helper function that throws an error if the actual int value is not the expected value
+func assertEqualsInt(t *testing.T, name string, expected int, actual int) {
+	assertEquals(t, name, convertIntToString(expected), convertIntToString(actual))
+}
+
+// convertIntToString converts an int value to a string
+func convertIntToString(number int) string {
+	return strconv.FormatInt(int64(number), 10)
+}
+
 func Test_GetRecords_ReturnsRecords(t *testing.T) {
 	subDomain := "subdomain"
 	expectedRec := IkRecord{ID: "1893", Type: "AAAA", SourceIdn: subDomain + ".example.com", Target: "ns11.infomaniak.ch", TtlInSec: 301, Priority: 15}
@@ -51,10 +61,10 @@ func Test_GetRecords_ReturnsRecords(t *testing.T) {
 	actualRec := result[0]
 	assertEquals(t, "ID", expectedRec.ID, actualRec.ID)
 	assertEquals(t, "Name", subDomain, actualRec.Name)
-	assertEquals(t, "TTL", strconv.FormatInt(int64(expectedRec.TtlInSec), 10), strconv.FormatInt(int64(actualRec.TTL), 10))
+	assertEqualsInt(t, "TTL", int(expectedRec.TtlInSec), int(actualRec.TTL))
 	assertEquals(t, "Type", expectedRec.Type, actualRec.Type)
 	assertEquals(t, "Value", expectedRec.Target, actualRec.Value)
-	assertEquals(t, "Priority", strconv.FormatInt(int64(expectedRec.Priority), 10), strconv.FormatInt(int64(actualRec.Priority), 10))
+	assertEqualsInt(t, "Priority", int(expectedRec.Priority), actualRec.Priority)
 }
 
 func Test_AppendRecords_DoesNotAppendRecordWithId(t *testing.T) {
