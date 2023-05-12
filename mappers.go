@@ -6,6 +6,12 @@ import (
 	"github.com/libdns/libdns"
 )
 
+// Default priority applied by infomaniak
+const defaultPriority = 10
+
+// Default TTL that is applied if none is provided - infomaniak requires a TTL
+const defaultTtlSecs = 300
+
 // ToLibDnsRecord maps a infomaniak dns record to a libdns record
 func (ikr *IkRecord) ToLibDnsRecord(zone string) libdns.Record {
 	return libdns.Record{
@@ -25,10 +31,17 @@ func ToInfomaniakRecord(libdnsRec *libdns.Record, zone string) IkRecord {
 		Type:      libdnsRec.Type,
 		SourceIdn: libdns.AbsoluteName(libdnsRec.Name, zone),
 		Target:    libdnsRec.Value,
+		TtlInSec:  uint(libdnsRec.TTL),
 		Priority:  uint(libdnsRec.Priority),
 	}
-	if libdnsRec.TTL != 0 {
-		ikRec.TtlInSec = uint(libdnsRec.TTL)
+
+	if ikRec.TtlInSec <= 0 {
+		ikRec.TtlInSec = defaultTtlSecs
 	}
+
+	if ikRec.Priority <= 0 {
+		ikRec.Priority = defaultPriority
+	}
+
 	return ikRec
 }
