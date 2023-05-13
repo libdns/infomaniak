@@ -137,7 +137,7 @@ func (c *Client) getDomainForZone(ctx context.Context, zone string) (IkDomain, e
 			return domain, nil
 		}
 	}
-	return IkDomain{}, fmt.Errorf("Could not find a domain name for zone %s in listed services", zone)
+	return IkDomain{}, fmt.Errorf("could not find a domain name for zone %s in listed services", zone)
 }
 
 // doRequest performs the API call for the given request req and parses the response's data to the given data struct - if the parameter is not nil

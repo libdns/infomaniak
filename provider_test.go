@@ -52,7 +52,7 @@ func Test_GetRecords_ReturnsRecords(t *testing.T) {
 	expectedRec := IkRecord{ID: "1893", Type: "AAAA", SourceIdn: subDomain + ".example.com", Target: "ns11.infomaniak.ch", TtlInSec: 301, Priority: 15}
 	client := TestClient{getter: func(ctx context.Context, zone string) ([]IkRecord, error) { return []IkRecord{expectedRec}, nil }}
 	provider := Provider{client: &client}
-	result, _ := provider.GetRecords(nil, "example.com")
+	result, _ := provider.GetRecords(context.TODO(), "example.com")
 
 	if len(result) != 1 {
 		t.Fatalf("Expected %d records, got %d", 1, len(result))
@@ -75,7 +75,7 @@ func Test_AppendRecords_DoesNotAppendRecordWithId(t *testing.T) {
 		},
 	}
 	provider := Provider{client: &client}
-	appendedRec, err := provider.AppendRecords(nil, "", []libdns.Record{{ID: "1893"}})
+	appendedRec, err := provider.AppendRecords(context.TODO(), "", []libdns.Record{{ID: "1893"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func Test_AppendRecords_AppendsNotExistingRecord(t *testing.T) {
 		},
 	}
 	provider := Provider{client: &client}
-	appendedRec, err := provider.AppendRecords(nil, "", []libdns.Record{{}})
+	appendedRec, err := provider.AppendRecords(context.TODO(), "", []libdns.Record{{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func Test_AppendRecords_DoesNotAppendAlreadyExistingRecord(t *testing.T) {
 		},
 	}
 	provider := Provider{client: &client}
-	appendedRec, err := provider.AppendRecords(nil, "", []libdns.Record{{ID: "222", Type: recType, Name: name}})
+	appendedRec, err := provider.AppendRecords(context.TODO(), "", []libdns.Record{{ID: "222", Type: recType, Name: name}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func Test_SetRecords_CreatesNewRecord(t *testing.T) {
 		},
 	}
 	provider := Provider{client: &client}
-	setRec, err := provider.SetRecords(nil, "", []libdns.Record{{}})
+	setRec, err := provider.SetRecords(context.TODO(), "", []libdns.Record{{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func Test_SetRecords_UpdatesExistingRecordById(t *testing.T) {
 		},
 	}
 	provider := Provider{client: &client}
-	setRec, err := provider.SetRecords(nil, "", []libdns.Record{{ID: id}})
+	setRec, err := provider.SetRecords(context.TODO(), "", []libdns.Record{{ID: id}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func Test_SetRecords_UpdatesExistingRecordByNameAndTypeIfNoIdProvided(t *testing
 		},
 	}
 	provider := Provider{client: &client}
-	setRec, err := provider.SetRecords(nil, "", []libdns.Record{{Type: recType}})
+	setRec, err := provider.SetRecords(context.TODO(), "", []libdns.Record{{Type: recType}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ func Test_DeleteRecords_DoesNotDeleteRecordWithoutIdWhoseNameAndTypeDoesNotMatch
 		},
 	}
 	provider := Provider{client: &client}
-	deletedRecs, err := provider.DeleteRecords(nil, "", []libdns.Record{{}})
+	deletedRecs, err := provider.DeleteRecords(context.TODO(), "", []libdns.Record{{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func Test_Delete_Records_DeletesRecordWithSameNameAndTypeIfGivenRecordHasNoId(t 
 		},
 	}
 	provider := Provider{client: &client}
-	deletedRecs, err := provider.DeleteRecords(nil, "example.com", []libdns.Record{{Type: recType, Name: subDomain}})
+	deletedRecs, err := provider.DeleteRecords(context.TODO(), "example.com", []libdns.Record{{Type: recType, Name: subDomain}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func Test_DeleteRecords_DeletesRecordWithId(t *testing.T) {
 		},
 	}
 	provider := Provider{client: &client}
-	deletedRecs, err := provider.DeleteRecords(nil, "", []libdns.Record{rec})
+	deletedRecs, err := provider.DeleteRecords(context.TODO(), "", []libdns.Record{rec})
 	if err != nil {
 		t.Fatal(err)
 	}

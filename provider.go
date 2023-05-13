@@ -159,10 +159,10 @@ func (p *Provider) mergeRecordsWithExistingOnes(ctx context.Context, zone string
 	result := make([]libdns.Record, 0)
 	for _, rec := range records {
 		if rec.ID != "" {
-			return nil, errors.New("Got record that already exists as parameter")
+			return nil, errors.New("got record that already exists as parameter")
 		}
 		recordsWithSameCoords := existingRecords[getCoordinates(rec)]
-		if recordsWithSameCoords != nil && len(recordsWithSameCoords) > 0 {
+		if len(recordsWithSameCoords) > 0 {
 			for _, existingRec := range recordsWithSameCoords {
 				copy := rec
 				copy.ID = existingRec.ID
