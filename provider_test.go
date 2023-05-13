@@ -67,6 +67,19 @@ func Test_GetRecords_ReturnsRecords(t *testing.T) {
 	assertEqualsInt(t, "Priority", int(expectedRec.Priority), actualRec.Priority)
 }
 
+func Test_GetRecords_RemovesTrailingDotsFromZone(t *testing.T) {
+	zoneWithoutSuffix := "example.com"
+
+	client := TestClient{getter: func(ctx context.Context, zone string) ([]IkRecord, error) {
+		if zone != zoneWithoutSuffix {
+			t.Fatalf("Expected zone to be %s, was %s", zoneWithoutSuffix, zone)
+		}
+		return []IkRecord{}, nil
+	}}
+	provider := Provider{client: &client}
+	provider.GetRecords(context.TODO(), zoneWithoutSuffix+".")
+}
+
 func Test_AppendRecords_DoesNotAppendRecordWithId(t *testing.T) {
 	client := TestClient{
 		setter: func(ctx context.Context, zone string, record IkRecord) (*IkRecord, error) {
@@ -134,6 +147,26 @@ func Test_AppendRecords_DoesNotAppendAlreadyExistingRecord(t *testing.T) {
 	if len(appendedRec) > 0 {
 		t.Fatalf("Expected 0 appended records, got %d", len(appendedRec))
 	}
+}
+
+func Test_AppendRecords_RemovesTrailingDotsFromZone(t *testing.T) {
+	zoneWithoutSuffix := "example.com"
+
+	client := TestClient{
+		getter: func(ctx context.Context, zone string) ([]IkRecord, error) {
+			return []IkRecord{}, nil
+		},
+		setter: func(ctx context.Context, zone string, record IkRecord) (*IkRecord, error) {
+			if zone != zoneWithoutSuffix {
+				t.Fatalf("Expected zone to be %s, was %s", zoneWithoutSuffix, zone)
+			} else if record.SourceIdn != zoneWithoutSuffix {
+				t.Fatalf("Expected SourceIdn=%s, got %s", zoneWithoutSuffix, zone)
+			}
+			return &IkRecord{}, nil
+		},
+	}
+	provider := Provider{client: &client}
+	provider.AppendRecords(context.TODO(), zoneWithoutSuffix+".", []libdns.Record{{Name: "@"}})
 }
 
 func Test_SetRecords_CreatesNewRecord(t *testing.T) {
@@ -219,6 +252,26 @@ func Test_SetRecords_UpdatesExistingRecordByNameAndTypeIfNoIdProvided(t *testing
 	if setRec[0].ID != id {
 		t.Fatalf("Expected returned record to be updated with ID %s, ID was %s", id, setRec[0].ID)
 	}
+}
+
+func Test_SetRecords_RemovesTrailingDotsFromZone(t *testing.T) {
+	zoneWithoutSuffix := "example.com"
+
+	client := TestClient{
+		getter: func(ctx context.Context, zone string) ([]IkRecord, error) {
+			return []IkRecord{}, nil
+		},
+		setter: func(ctx context.Context, zone string, record IkRecord) (*IkRecord, error) {
+			if zone != zoneWithoutSuffix {
+				t.Fatalf("Expected zone to be %s, was %s", zoneWithoutSuffix, zone)
+			} else if record.SourceIdn != zoneWithoutSuffix {
+				t.Fatalf("Expected SourceIdn=%s, got %s", zoneWithoutSuffix, zone)
+			}
+			return &IkRecord{}, nil
+		},
+	}
+	provider := Provider{client: &client}
+	provider.SetRecords(context.TODO(), zoneWithoutSuffix+".", []libdns.Record{{Name: "@"}})
 }
 
 func Test_DeleteRecords_DoesNotDeleteRecordWithoutIdWhoseNameAndTypeDoesNotMatchWithAnyExistingRecord(t *testing.T) {

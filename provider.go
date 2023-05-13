@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/libdns/libdns"
@@ -24,6 +25,7 @@ type Provider struct {
 
 // GetRecords lists all the records in the zone.
 func (p *Provider) GetRecords(ctx context.Context, zone string) ([]libdns.Record, error) {
+	zone = getWithoutTrailingDot(zone)
 	ikRecords, err := p.getClient().GetDnsRecordsForZone(ctx, zone)
 	if err != nil {
 		return nil, err
@@ -39,6 +41,7 @@ func (p *Provider) GetRecords(ctx context.Context, zone string) ([]libdns.Record
 
 // getRecordsByCoordinates returns the existing records in this zone by their coordinates
 func (p *Provider) getRecordsByCoordinates(ctx context.Context, zone string) (map[string][]libdns.Record, error) {
+	zone = getWithoutTrailingDot(zone)
 	records, err := p.GetRecords(ctx, zone)
 	if err != nil {
 		return nil, err
@@ -64,6 +67,7 @@ func getCoordinates(record libdns.Record) string {
 
 // AppendRecords adds records to the zone. It returns the records that were added.
 func (p *Provider) AppendRecords(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error) {
+	zone = getWithoutTrailingDot(zone)
 	mergedRecs, err := p.getRecordsMergedWithAlreadyExistingOnes(ctx, zone, records)
 	if err != nil {
 		return nil, err
@@ -85,6 +89,7 @@ func (p *Provider) AppendRecords(ctx context.Context, zone string, records []lib
 // SetRecords sets the records in the zone, either by updating existing records or creating new ones.
 // It returns the updated records.
 func (p *Provider) SetRecords(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error) {
+	zone = getWithoutTrailingDot(zone)
 	recsToSet, err := p.getRecordsMergedWithAlreadyExistingOnes(ctx, zone, records)
 	if err != nil {
 		return nil, err
@@ -104,6 +109,7 @@ func (p *Provider) SetRecords(ctx context.Context, zone string, records []libdns
 
 // DeleteRecords deletes the records from the zone. It returns the records that were deleted.
 func (p *Provider) DeleteRecords(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error) {
+	zone = getWithoutTrailingDot(zone)
 	recsToDelete, err := p.getRecordsMergedWithAlreadyExistingOnes(ctx, zone, records)
 	if err != nil {
 		return nil, err
@@ -125,6 +131,7 @@ func (p *Provider) DeleteRecords(ctx context.Context, zone string, records []lib
 // getRecordsMergedWithAlreadyExistingOnes returns records with an ID immediately, checks for records without ID if a record with the same coordinates
 // already exists, if yes, then it returns the updated already existing records otherwise the new record
 func (p *Provider) getRecordsMergedWithAlreadyExistingOnes(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error) {
+	zone = getWithoutTrailingDot(zone)
 	result := make([]libdns.Record, 0)
 	recsWithoutId := make([]libdns.Record, 0)
 
@@ -149,6 +156,7 @@ func (p *Provider) getRecordsMergedWithAlreadyExistingOnes(ctx context.Context, 
 // mergeRecordsWithExistingOnes takes a list of records without ID. If one or multiple records with the same coordinates already exist, these records' data
 // are updated and returned, otherwise the new record is returned without any ID set
 func (p *Provider) mergeRecordsWithExistingOnes(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error) {
+	zone = getWithoutTrailingDot(zone)
 	if len(records) <= 0 {
 		return make([]libdns.Record, 0), nil
 	}
@@ -183,6 +191,14 @@ func (p *Provider) getClient() IkClient {
 		p.client = &Client{Token: p.APIToken, HttpClient: http.DefaultClient}
 	}
 	return p.client
+}
+
+// getWithoutTrailingDot returns a given string without any trailing dot
+func getWithoutTrailingDot(s string) string {
+	for strings.HasSuffix(s, ".") {
+		s = strings.TrimSuffix(s, ".")
+	}
+	return s
 }
 
 // Interface guards
