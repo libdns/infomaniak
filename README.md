@@ -3,7 +3,7 @@ infomaniak for [`libdns`](https://github.com/libdns/libdns)
 
 [![Go Reference](https://pkg.go.dev/badge/test.svg)](https://pkg.go.dev/github.com/libdns/infomaniak)
 
-This package implements the [libdns interfaces](https://github.com/libdns/libdns) for [infomaniak](https://infomaniak), allowing you to manage DNS records.
+This package implements the [libdns interfaces](https://github.com/libdns/libdns) for [infomaniak](https://infomaniak.com), allowing you to manage DNS records.
 
 ## Code example
 ```go
