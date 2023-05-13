@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/libdns/libdns"
@@ -54,7 +55,7 @@ func (c *Client) GetDnsRecordsForZone(ctx context.Context, zone string) ([]IkRec
 
 	zoneRecords := make([]IkRecord, 0)
 	for _, rec := range dnsRecords {
-		if bytes.Contains([]byte(rec.SourceIdn), []byte(zone)) {
+		if strings.HasSuffix(rec.SourceIdn, zone) {
 			zoneRecords = append(zoneRecords, rec)
 		}
 	}
@@ -133,7 +134,7 @@ func (c *Client) getDomainForZone(ctx context.Context, zone string) (IkDomain, e
 		c.domains = &domains
 	}
 	for _, domain := range *c.domains {
-		if bytes.Contains([]byte(zone), []byte(domain.Name)) {
+		if strings.HasSuffix(zone, domain.Name) {
 			return domain, nil
 		}
 	}
