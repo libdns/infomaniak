@@ -2,6 +2,7 @@ package testing
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/libdns/infomaniak"
@@ -11,7 +12,9 @@ import (
 // Put your API token here - do not forget to remove it before committing!
 const apiToken = "<YOUR_TOKEN>"
 
-// use a subdomain that you normally don't use e.g. test.<your_domain> to prevent that your actual dns records are changed
+// Use a subdomain that you normally don't use.
+// For example use "test.example.com." to prevent that your actual dns records are changed.
+// Make sure you append a trailing "." to your domain as in the example above
 const zone = "<YOUR_(SUB)_DOMAIN>"
 
 // Provider used for integration test
@@ -38,7 +41,13 @@ func appendRecord(t *testing.T, rec libdns.Record) []libdns.Record {
 
 // setRecord calls provider, handles error and ensures that the set records will be deleted at the end of the test
 func setRecord(t *testing.T, rec libdns.Record) []libdns.Record {
-	setRecords, err := provider.SetRecords(context.TODO(), zone, []libdns.Record{rec})
+	return setRecordInSpecificZone(t, zone, rec)
+}
+
+// setRecordInSpecificZone calls provider for another than the default zone,
+// handles error and ensures that the set records will be deleted at the end of the test
+func setRecordInSpecificZone(t *testing.T, specificZone string, rec libdns.Record) []libdns.Record {
+	setRecords, err := provider.SetRecords(context.TODO(), specificZone, []libdns.Record{rec})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,6 +252,31 @@ func Test_SetRecords_OverwritesExistingRecordWithSameNameAndType(t *testing.T) {
 
 	assertNotExists(t, recToUpdate)
 	assertExists(t, updatedRec)
+}
+
+func Test_SetRecords_HandlesZonesWithTrailingDotCorrectly(t *testing.T) {
+	if strings.HasSuffix(zone, ".") {
+		//already tested - no need to run this and produce API calls
+		//infomaniak limits API requests so let's not waste them
+		return
+	}
+	defer cleanup()
+
+	zoneWithTrailingDot := zone + "."
+
+	recToCreate := aTestRecord(zoneWithTrailingDot, "127.0.0.1")
+	setRecs := setRecordInSpecificZone(t, zoneWithTrailingDot, recToCreate)
+
+	if len(setRecs) != 1 {
+		t.Fatalf("Expected 1 record updated, got %d", len(setRecs))
+	}
+
+	createdRec := setRecs[0]
+	if createdRec.ID == "" {
+		t.Fatalf("No ID set for newly created record")
+	}
+
+	assertExists(t, recToCreate)
 }
 
 func Test_GetRecords_DoesNotReturnRecordsOfParentZone(t *testing.T) {
