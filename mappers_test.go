@@ -20,7 +20,7 @@ func Test_ToLibDnsRecord_MapsAllProperties(t *testing.T) {
 	assertEquals(t, "Type", ikRec.Type, libRec.Type)
 	assertEquals(t, "Value", ikRec.Target, libRec.Value)
 	assertEqualsInt(t, "TTL", int(ikRec.TtlInSec), int(int64(libRec.TTL)))
-	assertEqualsInt(t, "Priority", int(ikRec.Priority), libRec.Priority)
+	assertEqualsInt(t, "Priority", int(ikRec.Priority), int(libRec.Priority))
 }
 
 func Test_ToLibDnsRecord_ReturnsRelativeName(t *testing.T) {
@@ -49,7 +49,7 @@ func Test_ToInfomaniakRecord_MapsAllProperties(t *testing.T) {
 	assertEquals(t, "Type", libRec.Type, ikRec.Type)
 	assertEquals(t, "Value", libRec.Value, ikRec.Target)
 	assertEqualsInt(t, "TTL", int(libRec.TTL), int(ikRec.TtlInSec))
-	assertEqualsInt(t, "Priority", libRec.Priority, int(ikRec.Priority))
+	assertEqualsInt(t, "Priority", int(libRec.Priority), int(ikRec.Priority))
 }
 
 func Test_ToInfomaniakRecord_DefaultTtlIsAppliedIfNoTtlProvided(t *testing.T) {

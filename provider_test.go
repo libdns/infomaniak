@@ -64,7 +64,7 @@ func Test_GetRecords_ReturnsRecords(t *testing.T) {
 	assertEqualsInt(t, "TTL", int(expectedRec.TtlInSec), int(actualRec.TTL))
 	assertEquals(t, "Type", expectedRec.Type, actualRec.Type)
 	assertEquals(t, "Value", expectedRec.Target, actualRec.Value)
-	assertEqualsInt(t, "Priority", int(expectedRec.Priority), actualRec.Priority)
+	assertEqualsInt(t, "Priority", int(expectedRec.Priority), int(actualRec.Priority))
 }
 
 func Test_GetRecords_RemovesTrailingDotsFromZone(t *testing.T) {
