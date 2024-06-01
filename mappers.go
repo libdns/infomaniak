@@ -20,7 +20,7 @@ func (ikr *IkRecord) ToLibDnsRecord(zone string) libdns.Record {
 		Name:     libdns.RelativeName(ikr.SourceIdn, zone),
 		Value:    ikr.Target,
 		TTL:      time.Duration(ikr.TtlInSec),
-		Priority: int(ikr.Priority),
+		Priority: ikr.Priority,
 	}
 }
 
@@ -32,7 +32,7 @@ func ToInfomaniakRecord(libdnsRec *libdns.Record, zone string) IkRecord {
 		SourceIdn: libdns.AbsoluteName(libdnsRec.Name, zone),
 		Target:    libdnsRec.Value,
 		TtlInSec:  uint(libdnsRec.TTL),
-		Priority:  uint(libdnsRec.Priority),
+		Priority:  libdnsRec.Priority,
 	}
 
 	if ikRec.TtlInSec <= 0 {
