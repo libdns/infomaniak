@@ -12,12 +12,6 @@ import (
 	"github.com/libdns/libdns"
 )
 
-// Base URL to infomaniak API
-const apiBaseUrl = "https://api.infomaniak.com"
-
-// URL of DNS record endpoint
-const apiDnsRecord = apiBaseUrl + "/1/domain/%d/dns/record"
-
 // Client that abstracts and calls infomaniak API
 type Client struct {
 	// infomaniak API token
@@ -29,7 +23,7 @@ type Client struct {
 	// cache of domains registered for the
 	// current infomaniak account to prevent
 	// that we have to load them for each request
-	domains *[]IkDomain
+	managedZones *[]IkZone
 
 	// mutex to prevent race conditions
 	mu sync.Mutex
@@ -37,12 +31,12 @@ type Client struct {
 
 // GetDnsRecordsForZone loads all dns records for a given zone
 func (c *Client) GetDnsRecordsForZone(ctx context.Context, zone string) ([]IkRecord, error) {
-	domain, err := c.getDomainForZone(ctx, zone)
+	infomaniakManagedZone, err := c.GetInfomaniakManagedZone(ctx, zone)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf(apiDnsRecord, domain.ID), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, getRecordsEndpointUrl(infomaniakManagedZone), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +49,10 @@ func (c *Client) GetDnsRecordsForZone(ctx context.Context, zone string) ([]IkRec
 
 	zoneRecords := make([]IkRecord, 0)
 	for _, rec := range dnsRecords {
-		if strings.HasSuffix(rec.SourceIdn, zone) {
+		recordFqdn := libdns.AbsoluteName(rec.Source, infomaniakManagedZone.Fqdn)
+		if strings.HasSuffix(recordFqdn, zone) {
+			rec.Source = libdns.RelativeName(recordFqdn, zone)
+			cleanRecordTarget(&rec)
 			zoneRecords = append(zoneRecords, rec)
 		}
 	}
@@ -64,52 +61,51 @@ func (c *Client) GetDnsRecordsForZone(ctx context.Context, zone string) ([]IkRec
 
 // CreateOrUpdateRecord creates a record if its Id property is not set, otherwise it updates the record
 func (c *Client) CreateOrUpdateRecord(ctx context.Context, zone string, record IkRecord) (*IkRecord, error) {
-	domain, err := c.getDomainForZone(ctx, zone)
+	infomaniakManagedZone, err := c.GetInfomaniakManagedZone(ctx, zone)
 	if err != nil {
 		return nil, err
 	}
-	record.Source = libdns.RelativeName(record.SourceIdn, domain.Name)
+
+	recordFqdn := libdns.AbsoluteName(record.Source, zone)
+	record.Source = libdns.RelativeName(recordFqdn, infomaniakManagedZone.Fqdn)
 
 	rawJson, err := json.Marshal(record)
 	if err != nil {
 		return nil, err
 	}
 
+	isNew := record.ID == 0
 	var method = http.MethodPost
-	var endpoint = fmt.Sprintf(apiDnsRecord, domain.ID)
-	if record.ID != "" {
-		endpoint += "/" + record.ID
+	var endpoint = getRecordsEndpointUrl(infomaniakManagedZone)
+
+	if !isNew {
 		method = http.MethodPut
+		endpoint = getRecordEndpointUrl(infomaniakManagedZone, fmt.Sprint(record.ID))
 	}
+
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewBuffer(rawJson))
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.doRequest(req, nil)
+	var updatedRecord IkRecord
+	_, err = c.doRequest(req, &updatedRecord)
 	if err != nil {
 		return nil, err
 	}
-
-	if record.ID == "" {
-		var idString string
-		err = json.Unmarshal(resp.Data, &idString)
-		if err != nil {
-			return nil, err
-		}
-		record.ID = idString
-	}
-	return &record, nil
+	updatedRecord.Source = libdns.RelativeName(libdns.AbsoluteName(updatedRecord.Source, infomaniakManagedZone.Fqdn), zone)
+	cleanRecordTarget(&updatedRecord)
+	return &updatedRecord, nil
 }
 
 // DeleteRecord deletes an existing dns record for a given zone
-func (c *Client) DeleteRecord(ctx context.Context, zone string, id string) error {
-	domain, err := c.getDomainForZone(ctx, zone)
+func (c *Client) DeleteRecord(ctx context.Context, zone string, recordId string) error {
+	infomaniakManagedZone, err := c.GetInfomaniakManagedZone(ctx, zone)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, fmt.Sprintf(apiDnsRecord, domain.ID)+"/"+id, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, getRecordEndpointUrl(infomaniakManagedZone, recordId), nil)
 	if err != nil {
 		return err
 	}
@@ -117,32 +113,32 @@ func (c *Client) DeleteRecord(ctx context.Context, zone string, id string) error
 	return err
 }
 
-// getDomainForZone looks for the domain that this zone is under
-func (c *Client) getDomainForZone(ctx context.Context, zone string) (IkDomain, error) {
+// GetInfomaniakManagedZone looks for the zone that is managed by infomaniak
+func (c *Client) GetInfomaniakManagedZone(ctx context.Context, domain string) (IkZone, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.domains == nil {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiBaseUrl+"/1/product?service_name=domain", nil)
+	if c.managedZones == nil {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, getZonesEndpointUrl(domain), nil)
 		if err != nil {
-			return IkDomain{}, err
+			return IkZone{}, err
 		}
-		var domains []IkDomain
-		_, err = c.doRequest(req, &domains)
+		var zones []IkZone
+		_, err = c.doRequest(req, &zones)
 		if err != nil {
-			return IkDomain{}, err
+			return IkZone{}, err
 		}
-		c.domains = &domains
+		c.managedZones = &zones
 	}
-	for _, domain := range *c.domains {
-		if strings.HasSuffix(zone, domain.Name) {
-			return domain, nil
+	for _, managedZone := range *c.managedZones {
+		if strings.HasSuffix(domain, managedZone.Fqdn) {
+			return managedZone, nil
 		}
 	}
-	return IkDomain{}, fmt.Errorf("could not find a domain name for zone %s in listed services", zone)
+	return IkZone{}, fmt.Errorf("could not find the zone managed by infomaniak for %s", domain)
 }
 
 // doRequest performs the API call for the given request req and parses the response's data to the given data struct - if the parameter is not nil
-func (c *Client) doRequest(req *http.Request, data interface{}) (*IkResponse, error) {
+func (c *Client) doRequest(req *http.Request, data any) (*IkResponse, error) {
 	req.Header.Set("Authorization", "Bearer "+c.Token)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -171,4 +167,28 @@ func (c *Client) doRequest(req *http.Request, data interface{}) (*IkResponse, er
 	}
 
 	return &resp, nil
+}
+
+const apiBaseUrl = "https://api.infomaniak.com"
+
+// getRecordEndpointUrl returns API endpoint for a specific, already existing record
+func getRecordEndpointUrl(zone IkZone, recordId string) string {
+	return fmt.Sprintf("%s/%s", getRecordsEndpointUrl(zone), recordId)
+}
+
+// getRecordsEndpointUrl returns API endpoint for all records of a zone
+func getRecordsEndpointUrl(zone IkZone) string {
+	return fmt.Sprintf("%s/2/zones/%s/records", apiBaseUrl, zone.Fqdn)
+}
+
+// getRecordsEndpointUrl returns API endpoint for all records of a zone
+func getZonesEndpointUrl(domain string) string {
+	return fmt.Sprintf("%s/2/domains/%s/zones", apiBaseUrl, domain)
+}
+
+// cleanRecordTarget Target of returned record is for some types wrapper in extra quotes
+func cleanRecordTarget(record *IkRecord) {
+	if record.Type == "TXT" {
+		record.Target = record.Target[1 : len(record.Target)-1]
+	}
 }

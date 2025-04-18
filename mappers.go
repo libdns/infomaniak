@@ -1,47 +1,49 @@
 package infomaniak
 
 import (
+	"strconv"
 	"time"
+
+	"fmt"
 
 	"github.com/libdns/libdns"
 )
 
-// Default priority applied by infomaniak
+// Default priority - infomaniak does not return any value
 const defaultPriority = 10
 
 // Default TTL that is applied if none is provided - infomaniak requires a TTL
 const defaultTtlSecs = 300
 
 // ToLibDnsRecord maps a infomaniak dns record to a libdns record
-func (ikr *IkRecord) ToLibDnsRecord(zone string) libdns.Record {
+func (ikr *IkRecord) ToLibDnsRecord() libdns.Record {
 	return libdns.Record{
-		ID:       ikr.ID,
+		ID:       fmt.Sprint(ikr.ID),
 		Type:     ikr.Type,
-		Name:     libdns.RelativeName(ikr.SourceIdn, zone),
+		Name:     ikr.Source,
 		Value:    ikr.Target,
 		TTL:      time.Duration(ikr.TtlInSec),
-		Priority: ikr.Priority,
+		Priority: defaultPriority,
 	}
 }
 
 // ToInfomaniakRecord maps a libdns record to a infomaniak dns record
-func ToInfomaniakRecord(libdnsRec *libdns.Record, zone string) IkRecord {
+func ToInfomaniakRecord(libdnsRec *libdns.Record) IkRecord {
 	ikRec := IkRecord{
-		ID:        libdnsRec.ID,
-		Type:      libdnsRec.Type,
-		SourceIdn: libdns.AbsoluteName(libdnsRec.Name, zone),
-		Target:    libdnsRec.Value,
-		TtlInSec:  uint(libdnsRec.TTL),
-		Priority:  libdnsRec.Priority,
+		ID:       0,
+		Type:     libdnsRec.Type,
+		Source:   libdnsRec.Name,
+		Target:   libdnsRec.Value,
+		TtlInSec: int(libdnsRec.TTL),
+	}
+
+	id, err := strconv.Atoi(libdnsRec.ID)
+	if err == nil {
+		ikRec.ID = id
 	}
 
 	if ikRec.TtlInSec <= 0 {
 		ikRec.TtlInSec = defaultTtlSecs
 	}
-
-	if ikRec.Priority <= 0 {
-		ikRec.Priority = defaultPriority
-	}
-
 	return ikRec
 }

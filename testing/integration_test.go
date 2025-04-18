@@ -91,7 +91,7 @@ func getRecords(t *testing.T, zone string) []libdns.Record {
 // aTestRecord returns a record that can be used for testing purposes
 func aTestRecord(name string, value string) libdns.Record {
 	return libdns.Record{
-		Type:     "MX",
+		Type:     "A",
 		Name:     libdns.RelativeName(name, zone),
 		Value:    value,
 		TTL:      3600,
@@ -203,6 +203,7 @@ func Test_SetRecords_UpdatesRecordById(t *testing.T) {
 	defer cleanup()
 
 	recToUpdate := aTestRecord(zone, "127.0.0.1")
+	recToUpdate.Type = "TXT"
 	recToUpdate = setRecord(t, recToUpdate)[0]
 
 	updatedRec := recToUpdate
@@ -236,6 +237,7 @@ func Test_SetRecords_OverwritesExistingRecordWithSameNameAndType(t *testing.T) {
 	defer cleanup()
 
 	recToUpdate := aTestRecord(zone, "127.0.0.1")
+	recToUpdate.Type = "TXT"
 	recToUpdate = setRecord(t, recToUpdate)[0]
 
 	updatedRec := recToUpdate

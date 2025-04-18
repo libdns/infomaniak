@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"testing"
 
+	"fmt"
+
 	"github.com/libdns/libdns"
 )
 
@@ -49,7 +51,7 @@ func convertIntToString(number int) string {
 
 func Test_GetRecords_ReturnsRecords(t *testing.T) {
 	subDomain := "subdomain"
-	expectedRec := IkRecord{ID: "1893", Type: "AAAA", SourceIdn: subDomain + ".example.com", Target: "ns11.infomaniak.ch", TtlInSec: 301, Priority: 15}
+	expectedRec := IkRecord{ID: 1893, Type: "AAAA", Source: subDomain, Target: "ns11.infomaniak.ch", TtlInSec: 301}
 	client := TestClient{getter: func(ctx context.Context, zone string) ([]IkRecord, error) { return []IkRecord{expectedRec}, nil }}
 	provider := Provider{client: &client}
 	result, _ := provider.GetRecords(context.TODO(), "example.com")
@@ -59,12 +61,12 @@ func Test_GetRecords_ReturnsRecords(t *testing.T) {
 	}
 
 	actualRec := result[0]
-	assertEquals(t, "ID", expectedRec.ID, actualRec.ID)
+	assertEquals(t, "ID", fmt.Sprint(expectedRec.ID), actualRec.ID)
 	assertEquals(t, "Name", subDomain, actualRec.Name)
 	assertEqualsInt(t, "TTL", int(expectedRec.TtlInSec), int(actualRec.TTL))
 	assertEquals(t, "Type", expectedRec.Type, actualRec.Type)
 	assertEquals(t, "Value", expectedRec.Target, actualRec.Value)
-	assertEqualsInt(t, "Priority", int(expectedRec.Priority), int(actualRec.Priority))
+	assertEqualsInt(t, "Priority", 10, int(actualRec.Priority))
 }
 
 func Test_GetRecords_RemovesTrailingDotsFromZone(t *testing.T) {
@@ -98,7 +100,7 @@ func Test_AppendRecords_DoesNotAppendRecordWithId(t *testing.T) {
 }
 
 func Test_AppendRecords_AppendsNotExistingRecord(t *testing.T) {
-	id := "12345"
+	id := 12345
 	methodCalled := false
 	client := TestClient{
 		getter: func(ctx context.Context, zone string) ([]IkRecord, error) { return []IkRecord{}, nil },
@@ -122,8 +124,8 @@ func Test_AppendRecords_AppendsNotExistingRecord(t *testing.T) {
 	if len(appendedRec) != 1 {
 		t.Fatalf("Expected 1 appended record, got %d", len(appendedRec))
 	}
-	if appendedRec[0].ID != id {
-		t.Fatalf("Expected appended record to be updated with ID %s, ID was %s", id, appendedRec[0].ID)
+	if appendedRec[0].ID != fmt.Sprint(id) {
+		t.Fatalf("Expected appended record to be updated with ID %d, ID was %s", id, appendedRec[0].ID)
 	}
 }
 
@@ -132,7 +134,7 @@ func Test_AppendRecords_DoesNotAppendAlreadyExistingRecord(t *testing.T) {
 	name := "Test1"
 	client := TestClient{
 		getter: func(ctx context.Context, zone string) ([]IkRecord, error) {
-			return []IkRecord{{SourceIdn: name, Type: recType}}, nil
+			return []IkRecord{{Source: name, Type: recType}}, nil
 		},
 		setter: func(ctx context.Context, zone string, record IkRecord) (*IkRecord, error) {
 			t.Fatalf("Expected that append is not called for already existing record")
@@ -159,8 +161,6 @@ func Test_AppendRecords_RemovesTrailingDotsFromZone(t *testing.T) {
 		setter: func(ctx context.Context, zone string, record IkRecord) (*IkRecord, error) {
 			if zone != zoneWithoutSuffix {
 				t.Fatalf("Expected zone to be %s, was %s", zoneWithoutSuffix, zone)
-			} else if record.SourceIdn != zoneWithoutSuffix {
-				t.Fatalf("Expected SourceIdn=%s, got %s", zoneWithoutSuffix, zone)
 			}
 			return &IkRecord{}, nil
 		},
@@ -196,7 +196,7 @@ func Test_SetRecords_CreatesNewRecord(t *testing.T) {
 }
 
 func Test_SetRecords_UpdatesExistingRecordById(t *testing.T) {
-	id := "789"
+	id := 789
 	methodCalled := false
 	client := TestClient{
 		setter: func(ctx context.Context, zone string, record IkRecord) (*IkRecord, error) {
@@ -209,7 +209,7 @@ func Test_SetRecords_UpdatesExistingRecordById(t *testing.T) {
 		},
 	}
 	provider := Provider{client: &client}
-	setRec, err := provider.SetRecords(context.TODO(), "", []libdns.Record{{ID: id}})
+	setRec, err := provider.SetRecords(context.TODO(), "", []libdns.Record{{ID: fmt.Sprint(id)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func Test_SetRecords_UpdatesExistingRecordById(t *testing.T) {
 }
 
 func Test_SetRecords_UpdatesExistingRecordByNameAndTypeIfNoIdProvided(t *testing.T) {
-	id := "2247"
+	id := 2247
 	recType := "MX"
 	methodCalled := false
 	client := TestClient{
@@ -249,8 +249,8 @@ func Test_SetRecords_UpdatesExistingRecordByNameAndTypeIfNoIdProvided(t *testing
 	if len(setRec) != 1 {
 		t.Fatalf("Expected 1 set record, got %d", len(setRec))
 	}
-	if setRec[0].ID != id {
-		t.Fatalf("Expected returned record to be updated with ID %s, ID was %s", id, setRec[0].ID)
+	if setRec[0].ID != fmt.Sprint(id) {
+		t.Fatalf("Expected returned record to be updated with ID %d, ID was %s", id, setRec[0].ID)
 	}
 }
 
@@ -264,8 +264,6 @@ func Test_SetRecords_RemovesTrailingDotsFromZone(t *testing.T) {
 		setter: func(ctx context.Context, zone string, record IkRecord) (*IkRecord, error) {
 			if zone != zoneWithoutSuffix {
 				t.Fatalf("Expected zone to be %s, was %s", zoneWithoutSuffix, zone)
-			} else if record.SourceIdn != zoneWithoutSuffix {
-				t.Fatalf("Expected SourceIdn=%s, got %s", zoneWithoutSuffix, zone)
 			}
 			return &IkRecord{}, nil
 		},
@@ -294,18 +292,18 @@ func Test_DeleteRecords_DoesNotDeleteRecordWithoutIdWhoseNameAndTypeDoesNotMatch
 
 func Test_Delete_Records_DeletesRecordWithSameNameAndTypeIfGivenRecordHasNoId(t *testing.T) {
 	subDomain := "sub"
-	recId := "23"
+	recId := 23
 	recType := "A"
 
 	methodCalled := false
 	client := TestClient{
 		getter: func(ctx context.Context, zone string) ([]IkRecord, error) {
-			return []IkRecord{{ID: recId, SourceIdn: subDomain + "example.com", Type: recType}}, nil
+			return []IkRecord{{ID: recId, Source: subDomain, Type: recType}}, nil
 		},
 		deleter: func(ctx context.Context, zone string, id string) error {
 			if methodCalled {
 				t.Fatalf("Expected delete method to be only called once")
-			} else if recId == id {
+			} else if fmt.Sprint(recId) == id {
 				methodCalled = true
 			}
 			return nil
@@ -322,8 +320,8 @@ func Test_Delete_Records_DeletesRecordWithSameNameAndTypeIfGivenRecordHasNoId(t 
 	if len(deletedRecs) != 1 {
 		t.Fatalf("Expected 1 deleted record, got %d", len(deletedRecs))
 	}
-	if deletedRecs[0].ID != recId {
-		t.Fatalf("Expected that record with id %s is deleted, got id %s", recId, deletedRecs[0].ID)
+	if deletedRecs[0].ID != fmt.Sprint(recId) {
+		t.Fatalf("Expected that record with id %d is deleted, got id %s", recId, deletedRecs[0].ID)
 	}
 }
 

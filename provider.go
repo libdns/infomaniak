@@ -33,7 +33,7 @@ func (p *Provider) GetRecords(ctx context.Context, zone string) ([]libdns.Record
 
 	libdnsRecords := make([]libdns.Record, 0, len(ikRecords))
 	for _, rec := range ikRecords {
-		libdnsRecords = append(libdnsRecords, rec.ToLibDnsRecord(zone))
+		libdnsRecords = append(libdnsRecords, rec.ToLibDnsRecord())
 	}
 
 	return libdnsRecords, nil
@@ -76,11 +76,11 @@ func (p *Provider) AppendRecords(ctx context.Context, zone string, records []lib
 	createdRecs := make([]libdns.Record, 0)
 	for _, rec := range mergedRecs {
 		if rec.ID == "" {
-			createdRec, err := p.getClient().CreateOrUpdateRecord(ctx, zone, ToInfomaniakRecord(&rec, zone))
+			createdRec, err := p.getClient().CreateOrUpdateRecord(ctx, zone, ToInfomaniakRecord(&rec))
 			if err != nil {
 				return nil, err
 			}
-			createdRecs = append(createdRecs, createdRec.ToLibDnsRecord(zone))
+			createdRecs = append(createdRecs, createdRec.ToLibDnsRecord())
 		}
 	}
 	return createdRecs, nil
@@ -97,11 +97,11 @@ func (p *Provider) SetRecords(ctx context.Context, zone string, records []libdns
 
 	createdOrUpdatedRecs := make([]libdns.Record, 0)
 	for _, rec := range recsToSet {
-		updatedRec, err := p.getClient().CreateOrUpdateRecord(ctx, zone, ToInfomaniakRecord(&rec, zone))
+		updatedRec, err := p.getClient().CreateOrUpdateRecord(ctx, zone, ToInfomaniakRecord(&rec))
 		if err != nil {
 			return nil, err
 		}
-		createdOrUpdatedRecs = append(createdOrUpdatedRecs, updatedRec.ToLibDnsRecord(zone))
+		createdOrUpdatedRecs = append(createdOrUpdatedRecs, updatedRec.ToLibDnsRecord())
 	}
 
 	return createdOrUpdatedRecs, nil
