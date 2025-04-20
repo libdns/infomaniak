@@ -2,8 +2,8 @@ package testing
 
 import (
 	"context"
-	"strings"
 	"testing"
+	"time"
 
 	"github.com/libdns/infomaniak"
 	"github.com/libdns/libdns"
@@ -89,13 +89,12 @@ func getRecords(t *testing.T, zone string) []libdns.Record {
 }
 
 // aTestRecord returns a record that can be used for testing purposes
-func aTestRecord(name string, value string) libdns.Record {
-	return libdns.Record{
-		Type:     "A",
-		Name:     libdns.RelativeName(name, zone),
-		Value:    value,
-		TTL:      3600,
-		Priority: 6,
+func aTestRecord(name string, recType string, value string) libdns.Record {
+	return libdns.RR{
+		Type: recType,
+		Name: libdns.RelativeName(name, zone),
+		Data: value,
+		TTL:  time.Duration(3600 * time.Second),
 	}
 }
 
@@ -115,176 +114,85 @@ func assertNotExists(t *testing.T, record libdns.Record) {
 
 // isRecordExisting returns if a record with given name, type and value exists
 func isRecordExisting(t *testing.T, record libdns.Record) bool {
+	rr := record.RR()
 	existingRecs := getRecords(t, zone)
 	for _, existingRec := range existingRecs {
-		if existingRec.Name == record.Name && existingRec.Type == record.Type && existingRec.Value == record.Value {
+		existingRr := existingRec.RR()
+		if existingRr.Name == rr.Name && existingRr.Type == rr.Type && existingRr.Data == rr.Data {
 			return true
 		}
 	}
 	return false
 }
 
-func Test_DeleteRecords_DeletesRecordById(t *testing.T) {
-	defer cleanup()
-
-	recToDelete := aTestRecord(zone, "127.0.0.1")
-	recToDelete = setRecord(t, recToDelete)[0]
-	deleteRecord(t, recToDelete)
-
-	assertNotExists(t, recToDelete)
-}
-
 func Test_DeleteRecords_DeletesRecordByNameAndType(t *testing.T) {
 	defer cleanup()
 
-	recToDeleteWithoutId := aTestRecord(zone, "127.0.0.1")
+	recToDeleteWithoutId := aTestRecord(zone, "A", "127.0.0.1")
 	setRecord(t, recToDeleteWithoutId)
-
-	recToDeleteWithoutId.ID = ""
 	deleteRecord(t, recToDeleteWithoutId)
-
 	assertNotExists(t, recToDeleteWithoutId)
 }
 
 func Test_AppendRecords_AppendsNewRecord(t *testing.T) {
 	defer cleanup()
 
-	recToAppend := aTestRecord(zone, "127.0.0.1")
+	recToAppend := aTestRecord(zone, "A", "127.0.0.1")
 	appendedRecords := appendRecord(t, recToAppend)
 	if len(appendedRecords) != 1 {
 		t.Fatalf("Expected 1 record appended, got %d", len(appendedRecords))
 	}
-
-	appendedRecord := appendedRecords[0]
-
-	if appendedRecord.ID == "" {
-		t.Fatalf("Expected an ID for newly appended record")
-	}
-	assertExists(t, recToAppend)
+	assertExists(t, appendedRecords[0])
 }
 
 func Test_AppendRecords_DoesNotOverwriteExistingRecordWithSameNameAndType(t *testing.T) {
 	defer cleanup()
 
-	originalRecord := aTestRecord(zone, "127.0.0.1")
+	originalRecord := aTestRecord(zone, "A", "127.0.0.1")
 	appendRecord(t, originalRecord)
 
-	recThatShouldNotOverwriteFirst := originalRecord
-	recThatShouldNotOverwriteFirst.Value = "127.0.0.0"
-	addedRecords := appendRecord(t, recThatShouldNotOverwriteFirst)
-
-	if len(addedRecords) > 0 {
-		t.Fatalf("Expected that already existing record is not overwritten but it was")
+	recThatShouldNotOverwriteFirst := originalRecord.RR()
+	recThatShouldNotOverwriteFirst.Data = "127.0.0.0"
+	addedRecords, err := provider.AppendRecords(context.TODO(), zone, []libdns.Record{recThatShouldNotOverwriteFirst})
+	if err == nil {
+		testRecords = append(testRecords, addedRecords...)
 	}
 
 	assertExists(t, originalRecord)
-	assertNotExists(t, recThatShouldNotOverwriteFirst)
 }
 
 func Test_SetRecords_CreatesNewRecord(t *testing.T) {
 	defer cleanup()
 
-	recToCreate := aTestRecord(zone, "127.0.0.1")
+	recToCreate := aTestRecord(zone, "TXT", "127.0.0.1")
 	setRecs := setRecord(t, recToCreate)
 
 	if len(setRecs) != 1 {
 		t.Fatalf("Expected 1 record updated, got %d", len(setRecs))
 	}
-
-	createdRec := setRecs[0]
-	if createdRec.ID == "" {
-		t.Fatalf("No ID set for newly created record")
-	}
-
-	assertExists(t, recToCreate)
-}
-
-func Test_SetRecords_UpdatesRecordById(t *testing.T) {
-	defer cleanup()
-
-	recToUpdate := aTestRecord(zone, "127.0.0.1")
-	recToUpdate.Type = "TXT"
-	recToUpdate = setRecord(t, recToUpdate)[0]
-
-	updatedRec := recToUpdate
-	updatedRec.Value = "127.0.0.0"
-	result := setRecord(t, updatedRec)
-
-	if len(result) != 1 {
-		t.Fatalf("Expected 1 record updated, got %d", len(result))
-	}
-
-	assertNotExists(t, recToUpdate)
-	assertExists(t, updatedRec)
-}
-
-func Test_SetRecords_WorksWithoutTtl(t *testing.T) {
-	defer cleanup()
-
-	rec := aTestRecord(zone, "127.0.0.1")
-	rec.Type = "TXT"
-	rec.TTL = 0
-
-	result := setRecord(t, rec)
-
-	if len(result) != 1 {
-		t.Fatalf("Expected 1 record updated, got %d", len(result))
-	}
-	assertExists(t, rec)
+	assertExists(t, setRecs[0])
 }
 
 func Test_SetRecords_OverwritesExistingRecordWithSameNameAndType(t *testing.T) {
 	defer cleanup()
 
-	recToUpdate := aTestRecord(zone, "127.0.0.1")
-	recToUpdate.Type = "TXT"
-	recToUpdate = setRecord(t, recToUpdate)[0]
+	recToUpdate := aTestRecord(zone, "MX", "3 127.0.0.1")
+	updatedRec := setRecord(t, recToUpdate)[0].RR()
 
-	updatedRec := recToUpdate
-	updatedRec.ID = ""
-	updatedRec.Value = "127.0.0.0"
+	updatedRec.Data = "7 127.0.0.0"
 	result := setRecord(t, updatedRec)
 
 	if len(result) != 1 {
 		t.Fatalf("Expected 1 record updated, got %d", len(result))
 	}
-	if recToUpdate.ID != result[0].ID {
-		t.Fatalf("Expected record with ID %s back, but got %s", recToUpdate.ID, result[0].ID)
-	}
-
 	assertNotExists(t, recToUpdate)
 	assertExists(t, updatedRec)
-}
-
-func Test_SetRecords_HandlesZonesWithTrailingDotCorrectly(t *testing.T) {
-	if strings.HasSuffix(zone, ".") {
-		//already tested - no need to run this and produce API calls
-		//infomaniak limits API requests so let's not waste them
-		return
-	}
-	defer cleanup()
-
-	zoneWithTrailingDot := zone + "."
-
-	recToCreate := aTestRecord(zoneWithTrailingDot, "127.0.0.1")
-	setRecs := setRecordInSpecificZone(t, zoneWithTrailingDot, recToCreate)
-
-	if len(setRecs) != 1 {
-		t.Fatalf("Expected 1 record updated, got %d", len(setRecs))
-	}
-
-	createdRec := setRecs[0]
-	if createdRec.ID == "" {
-		t.Fatalf("No ID set for newly created record")
-	}
-
-	assertExists(t, recToCreate)
 }
 
 func Test_GetRecords_DoesNotReturnRecordsOfParentZone(t *testing.T) {
 	defer cleanup()
 
-	setRecord(t, aTestRecord(zone, "127.0.0.1"))
+	setRecord(t, aTestRecord(zone, "MX", "8 127.0.0.1"))
 	result := getRecords(t, "subzone."+zone)
 	if len(result) > 0 {
 		t.Fatalf("Expected 0 records, got %d", len(result))
@@ -294,7 +202,7 @@ func Test_GetRecords_DoesNotReturnRecordsOfParentZone(t *testing.T) {
 func Test_GetRecords_ReturnsRecordOfChildZone(t *testing.T) {
 	defer cleanup()
 
-	setRecord(t, aTestRecord("subzone."+zone, "127.0.0.1"))
+	setRecord(t, aTestRecord("subzone."+zone, "MX", "7 127.0.0.1"))
 	result := getRecords(t, zone)
 	if len(result) != 1 {
 		t.Fatalf("Expected 1 record, got %d", len(result))

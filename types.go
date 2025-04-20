@@ -11,16 +11,53 @@ type IkRecord struct {
 	ID int `json:"id,omitempty"`
 
 	// Type of this record
-	Type string `json:"type"`
+	Type string `json:"type,omitempty"`
 
 	// Absolute Source / Name
 	Source string `json:"source,omitempty"`
 
 	// Value of this record
-	Target string `json:"target"`
+	Target string `json:"target,omitempty"`
 
 	// TTL in seconds
-	TtlInSec int `json:"ttl"`
+	TtlInSec int `json:"ttl,omitempty"`
+
+	// Record Description
+	Description IkRecordDescription `json:"description,omitempty"`
+}
+
+type IkRecordDescription struct {
+	// Only available for SRV and MX records
+	Priority IkIntValueAttribute `json:"priority,omitempty"`
+
+	// Only available for SRV records
+	Port IkIntValueAttribute `json:"port,omitempty"`
+
+	// Only available for SRV records
+	Weight IkIntValueAttribute `json:"weight,omitempty"`
+
+	// Only available for SRV and DNSKEY records
+	Protocol IkStringValueAttribute `json:"protocol,omitempty"`
+
+	// Only available for CAA and DNSKEY records
+	Flags IkIntValueAttribute `json:"flags,omitempty"`
+
+	// Only available for CAA records
+	Tag IkStringValueAttribute `json:"tag,omitempty"`
+}
+
+type IkIntValueAttribute struct {
+	// Attribute value
+	Value int `json:"value,omitempty"`
+	// Human readable value of attribute
+	Label string `json:"label,omitempty"`
+}
+
+type IkStringValueAttribute struct {
+	// Attribute value
+	Value string `json:"value,omitempty"`
+	// Human readable value of attribute
+	Label string `json:"label,omitempty"`
 }
 
 // IkResponse infomaniak API response
@@ -41,6 +78,16 @@ type IkZone struct {
 	Fqdn string `json:"fqdn"`
 }
 
+// ZoneMapping represents input zone coming from the caller and the zone
+// that is actually managed by infomaniak
+type ZoneMapping struct {
+	// Zone that is mangaged by infomaniak
+	InfomaniakManagedZone string `json:"fqdn"`
+
+	// Zone that is provided by libdns
+	LibDnsZone string
+}
+
 // IkClient interface to abstract infomaniak client
 type IkClient interface {
 	// DeleteRecord deletes record with given ID
@@ -51,4 +98,7 @@ type IkClient interface {
 
 	// GetDnsRecordsForZone returns all records of the given zone
 	GetDnsRecordsForZone(ctx context.Context, zone string) ([]IkRecord, error)
+
+	// GetFqdnOfZoneForDomain returns the FQDN of the zone managed by infomaniak
+	GetFqdnOfZoneForDomain(ctx context.Context, domain string) (string, error)
 }
