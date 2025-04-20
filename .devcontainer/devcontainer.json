@@ -1,0 +1,34 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/alpine
+{
+	"name": "devcontainer-libdns-infomaniak",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": ".."
+	},
+
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"golang.Go",
+				"IgorSbitnev.error-gutters"
+			]
+		}
+	},
+
+	// Tell vscode which user it should use to install the workspace for code server
+	"containerUser": "vscode",
+	// Allow access to workspace files
+	"runArgs": [
+		"--userns=keep-id:uid=1000,gid=1000"
+	],
+
+	"updateRemoteUserUID": true,
+ 	"containerEnv": {
+   		"HOME": "/home/vscode"
+	},
+
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/libdns-infomaniak,type=bind,relabel=private",
+	"workspaceFolder": "/workspaces/libdns-infomaniak"
+}

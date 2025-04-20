@@ -1,0 +1,13 @@
+{
+    log default {
+        format console
+    }
+    email <your_test_email_here>
+    acme_dns infomaniak <your_test_token_here>
+    http_port 8080
+    https_port 8081
+}
+
+<your_test_sub_domain_here>:8081 {
+    respond "Hello, from your test caddy!"
+}
