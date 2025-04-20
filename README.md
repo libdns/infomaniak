@@ -22,7 +22,7 @@ Please login to your infomaniak account and then navigate [here](https://manager
 The repository contains configurations for a Visual Studio Code dev container. Please install the Visual Studio Code extension `ms-vscode-remote.remote-containers` to make use of it.
 
 ### Testing With Caddy
-If you use the provided Dev Container, you can easily test your changes directly with caddy. Start by replacing the three placeholders for email, API token and domain in the `.devcontainer/.caddyfile` (make sure to never commit these changes). You can then use the commands below directly in your Dev Container.
+If you use the provided Dev Container, you can easily test your changes directly with caddy. Start by replacing the three placeholders for email, API token and domain in `.devcontainer/.caddyfile` (make sure to never commit these changes). You can then use the commands below directly in your Dev Container.
 
 After each change, you have to rebuild caddy with the following command - make sure to enter a valid version of caddy:
 `xcaddy build <caddy_version> --with dns.providers.infomaniak=/workspaces/caddy-dns-infomaniak --replace github.com/libdns/infomaniak=/workspaces/libdns-infomaniak --output /workspaces/caddy/caddy`
@@ -30,5 +30,5 @@ After each change, you have to rebuild caddy with the following command - make s
 Run caddy with the following command and monitor the output:
 `/workspaces/caddy/caddy run --config /workspaces/caddy/.caddyfile`
 
-If caddy managed to successfully issue the certificate and you would like to test from scratch again, you have to delete the previously issued certificate
+If caddy managed to successfully issue the certificate and you would like to test from scratch again, you have to delete the previously issued certificate by running
 `rm -R /home/vscode/.local/share/caddy`
